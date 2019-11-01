@@ -1,0 +1,6 @@
+@import '../../theme/variables';
+
+.sub-drawer {
+  background-color: $toolbar-md-text-color;
+  border-left: 3px solid color($colors, secondary);
+}

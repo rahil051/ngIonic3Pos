@@ -1,0 +1,133 @@
+<ion-grid class="action-buttons basket">
+  <ion-row>
+    <ion-col col-md-8 class="customer-container pull-left">
+      <ion-item item-content *ngIf="customer" (click)="editCustomer()" tappable>
+        <ion-label color="primary">
+          {{ customer.firstName }} {{ customer.lastName }}
+          <ion-icon click-stop-propagation class="pull-right" name="close" tappable (click)="unassignCustomer()"></ion-icon>
+        </ion-label>
+      </ion-item>
+      <ion-searchbar *ngIf="!customer && searchBarEnabled" autofocus debounce="500" [(ngModel)]="searchInput" [showCancelButton]="showSearchCancel"
+        (ionInput)="searchCustomers($event)" (ionCancel)="cancelSearch($event)" placeholder="Search Customer">
+      </ion-searchbar>
+
+      <ion-list class="search-list" *ngIf="!customer && searchBarEnabled && searchInput && searchedCustomers.length > 0">
+        <ion-item *ngFor="let item of searchedCustomers" (click)="assignCustomer(item)">
+          {{ item.firstName }} {{ item.lastName }}
+        </ion-item>
+      </ion-list>
+
+      <ion-list class="search-list" *ngIf="!customer && searchBarEnabled && searchInput && searchedCustomers.length == 0">
+        <ion-item (click)="createCustomer()">
+          <ion-icon name="person-add"></ion-icon>&nbsp;&nbsp;Add a Customer
+        </ion-item>
+      </ion-list>
+    </ion-col>
+    <ion-col col-md-4 class="pull-right">
+      <button ion-button clear (click)="parkSale()" [disabled]="!sale || (!sale.customerKey && sale.items.length == 0)">
+        <ion-icon name="pause"></ion-icon>
+      </button>
+      <button ion-button clear (click)="discardSale()" [disabled]="!sale || (!sale.customerKey && sale.items.length == 0)">
+        <ion-icon name="trash"></ion-icon>
+      </button>
+    </ion-col>
+  </ion-row>
+</ion-grid>
+
+<ion-grid class="top-component basket">
+  <ion-row>
+    <ion-col col-12>
+      <ion-list *ngIf="sale">
+        <!-- Items in the basket [start] -->
+        <ion-item *ngFor="let item of sale.items | groupBy:'employeeId'; let $index=index" [ngClass]="item.cssClass || ''" tappable>
+
+          <ion-grid>
+            <ion-row (click)="viewInfo(item, $index)">
+              <ion-col col-md-11 offset-md-1 *ngIf="item.employeeId && employeesHash[item.employeeId] && (item.cssClass && (item.cssClass == 'group-item' || item.cssClass == 'group-item-start'))">
+                <h1>{{employeesHash[item.employeeId].firstName}}</h1>
+              </ion-col>
+              <ion-col col-md-1>
+                {{item.quantity}}
+              </ion-col>
+              <ion-col col-md-7 class="name">
+                {{item.name}}
+              </ion-col>
+              <ion-col col-md-3 class="pull-right">
+                <span>${{item.finalPrice * item.quantity | number : '1.2-2'}}</span>
+                <br/>
+                <span *ngIf="item.systemPrice != item.finalPrice">
+                  <small>
+                    <s>${{item.systemPrice * item.quantity | number : '1.2-2'}}</s>
+                  </small>
+                </span>
+              </ion-col>
+              <ion-col col-md-1 class="pull-right">
+                <ion-icon click-stop-propagation name="trash" class="clickable" (click)="removeItem($index)"></ion-icon>
+              </ion-col>
+            </ion-row>
+          </ion-grid>
+        </ion-item>
+        <!-- Items in the basket [end] -->
+
+      </ion-list>
+    </ion-col>
+  </ion-row>
+</ion-grid>
+<ion-grid class="bottom-component basket" *ngIf="sale">
+  <ion-row>
+    <ion-col col-md-12>
+      <hr/>
+      <ion-textarea [(ngModel)]="sale.notes" rows="1" (change)="syncSale()" placeholder="Add Sale Notes...">
+      </ion-textarea>
+    </ion-col>
+    <ion-col col-md-3>
+      <button ion-button small color="primary" [disabled]="disablePaymentBtn" (click)="openDiscountSurchargeModal()">Discount/Surcharge</button>
+    </ion-col>
+    <ion-col col-md-3 offset-md-6 class="pull-right">
+      <button ion-button small color="light" [disabled]="disablePaymentBtn || sale.appliedValues.length <= 0" (click)="viewAppliedValues()">
+        <ion-icon name="eye"></ion-icon>
+      </button>
+    </ion-col>
+
+    <ion-col col-md-3>Subtotal</ion-col>
+    <ion-col col-md-3 offset-md-6 class="pull-right">${{sale.subTotal | number : '1.2-2'}}</ion-col>
+
+    <ion-col col-md-3 [ngPlural]="sale.items.length">
+      <ng-template ngPluralCase="=0">Tax</ng-template>
+      <ng-template ngPluralCase="=1">Tax
+        <small>({{sale.items[0].tax.name}})</small>
+      </ng-template>
+      <ng-template ngPluralCase="other">Tax
+        <small>({{sale.items.length}} taxes)</small>
+      </ng-template>
+    </ion-col>
+    <ion-col col-md-3 offset-md-6 class="pull-right">${{sale.tax | number : '1.2-2'}}</ion-col>
+
+    <ion-col col-md-3 [ngPlural]="sale.items.length">
+      <ng-template ngPluralCase="=0">Total
+        <small>(no items)</small>
+      </ng-template>
+      <ng-template ngPluralCase="=1">Total
+        <small>(1 item)</small>
+      </ng-template>
+      <ng-template ngPluralCase="other">Total
+        <small>({{sale.items.length}} items)</small>
+      </ng-template>
+    </ion-col>
+    <ion-col col-md-3 offset-md-6 class="pull-right">${{sale.taxTotal | number : '1.2-2'}}</ion-col>
+    <ion-col col-md-2 no-padding>
+      <button ion-button small block padding (click)="fastPayment()" class="pay-button" color="warning" [disabled]="disablePaymentBtn">
+        <span class="button-inner pull-left">
+          <ion-icon name="flash"></ion-icon>
+        </span>
+      </button>
+    </ion-col>
+    <ion-col col-md-10 no-padding>
+      <button ion-button small block padding (click)="gotoPayment()" class="pay-button" [disabled]="disablePaymentBtn" [color]="sale.taxTotal >= 0 ? 'primary' : 'danger'">
+        <span class="button-inner pull-right">
+          {{ payBtnText }} &nbsp;&nbsp; ${{balance | number : '1.2-2'}}
+        </span>
+      </button>
+    </ion-col>
+  </ion-row>
+</ion-grid>
